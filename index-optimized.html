@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>3D Model Viewer</title>
+    <title>3D Model Viewer - Optimized</title>
     <style>
         * {
             margin: 0;
@@ -42,6 +42,8 @@
             font-weight: 300;
             letter-spacing: 0.1em;
             animation: pulse 1.5s ease-in-out infinite;
+            text-align: center;
+            max-width: 80%;
         }
 
         @keyframes pulse {
@@ -85,12 +87,48 @@
             opacity: 0.8;
             font-size: 0.9rem;
         }
+
+        .file-selector {
+            position: absolute;
+            top: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(255, 255, 255, 0.1);
+            backdrop-filter: blur(10px);
+            padding: 15px 30px;
+            border-radius: 50px;
+            color: white;
+            font-size: 0.9rem;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+        }
+
+        .file-selector select {
+            background: rgba(255, 255, 255, 0.2);
+            border: none;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-left: 10px;
+        }
+
+        .file-selector option {
+            background: #333;
+            color: white;
+        }
     </style>
 </head>
 <body>
     <div id="container">
+        <div class="file-selector">
+            <label>3D Model:</label>
+            <select id="model-selector">
+                <option value="test-cube.stl">Test Cube (Fast)</option>
+                <option value="Example.stl">Full Model (153MB - Slow)</option>
+            </select>
+        </div>
+        
         <div id="canvas-container"></div>
-        <div class="loading" id="loading">Loading 3D Model...</div>
+        <div class="loading" id="loading">Select a model to load...</div>
         <div class="controls" id="controls" style="display: none;">
             Drag to rotate • Scroll to zoom • Right-click to pan
         </div>
@@ -104,11 +142,12 @@
         const container = document.getElementById('canvas-container');
         const loading = document.getElementById('loading');
         const controlsInfo = document.getElementById('controls');
+        const modelSelector = document.getElementById('model-selector');
 
         function init() {
             // Scene setup
             scene = new THREE.Scene();
-            scene.background = null; // Transparent background
+            scene.background = null;
 
             // Camera setup
             camera = new THREE.PerspectiveCamera(
@@ -147,22 +186,11 @@
             const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
             directionalLight.position.set(50, 50, 50);
             directionalLight.castShadow = true;
-            directionalLight.shadow.camera.near = 0.1;
-            directionalLight.shadow.camera.far = 200;
-            directionalLight.shadow.camera.left = -50;
-            directionalLight.shadow.camera.right = 50;
-            directionalLight.shadow.camera.top = 50;
-            directionalLight.shadow.camera.bottom = -50;
-            directionalLight.shadow.mapSize.width = 2048;
-            directionalLight.shadow.mapSize.height = 2048;
             scene.add(directionalLight);
 
             const directionalLight2 = new THREE.DirectionalLight(0xffffff, 0.3);
             directionalLight2.position.set(-50, 50, -50);
             scene.add(directionalLight2);
-
-            // Load STL file
-            loadSTL();
 
             // Handle window resize
             window.addEventListener('resize', onWindowResize, false);
@@ -171,51 +199,64 @@
             controls.addEventListener('start', () => {
                 controls.autoRotate = false;
             });
+
+            // Model selector change
+            modelSelector.addEventListener('change', loadSelectedModel);
         }
 
-        function loadSTL() {
+        function loadSelectedModel() {
+            const selectedFile = modelSelector.value;
+            loadSTL(selectedFile);
+        }
+
+        function loadSTL(filename) {
+            // Clear existing model
+            if (model) {
+                scene.remove(model);
+                model = null;
+            }
+
+            loading.style.display = 'block';
+            controlsInfo.style.display = 'none';
+            
+            if (filename === 'Example.stl') {
+                loading.innerHTML = `
+                    <div style="text-align: center;">
+                        <h2>⚠️ Large File Warning</h2>
+                        <p>This is a 153MB file</p>
+                        <p>Loading may take several minutes...</p>
+                        <p>Consider using the Test Cube for faster loading</p>
+                        <div style="margin-top: 20px;">
+                            <button onclick="modelSelector.value='test-cube.stl'; loadSelectedModel();" 
+                                    style="background: rgba(255,255,255,0.2); border: 1px solid white; color: white; padding: 10px 20px; border-radius: 5px; cursor: pointer;">
+                                Use Test Cube Instead
+                            </button>
+                        </div>
+                    </div>
+                `;
+                
+                // Auto-load after 3 seconds if user doesn't cancel
+                setTimeout(() => {
+                    if (modelSelector.value === 'Example.stl') {
+                        actuallyLoadSTL(filename);
+                    }
+                }, 3000);
+            } else {
+                actuallyLoadSTL(filename);
+            }
+        }
+
+        function actuallyLoadSTL(filename) {
             const loader = new THREE.STLLoader();
             
-            // Add debugging
-            console.log('Starting to load STL file...');
+            console.log(`Loading: ${filename}`);
+            loading.innerHTML = `Loading ${filename}...`;
             
-            // Try test cube first, then fall back to main STL
-            const stlFiles = ['test-cube.stl', 'Example.stl'];
-            let currentFileIndex = 0;
-            let loadTimeout;
-            
-            function tryLoadSTL() {
-                const currentFile = stlFiles[currentFileIndex];
-                console.log(`Trying to load: ${currentFile}`);
-                
-                // Set timeout for large files
-                if (currentFile === 'Example.stl') {
-                    loadTimeout = setTimeout(() => {
-                        console.log('Large file loading timeout - showing progress message');
-                        loading.innerHTML = `
-                            <div style="text-align: center;">
-                                <h2>Loading Large 3D Model...</h2>
-                                <p>This is a 153MB file - please be patient</p>
-                                <p>Downloading from server...</p>
-                                <div style="margin-top: 20px;">
-                                    <div style="width: 200px; height: 4px; background: rgba(255,255,255,0.3); border-radius: 2px; margin: 0 auto;">
-                                        <div id="progress-bar" style="width: 0%; height: 100%; background: white; border-radius: 2px; transition: width 0.3s;"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        `;
-                    }, 5000); // Show progress after 5 seconds
-                }
-                
-                loader.load(
-                    currentFile,
-                    function (geometry) {
-                        // Clear timeout
-                        if (loadTimeout) {
-                            clearTimeout(loadTimeout);
-                        }
-                        
-                        console.log(`STL file loaded successfully! (${currentFile})`, geometry);
+            loader.load(
+                filename,
+                function (geometry) {
+                    console.log(`STL file loaded successfully! (${filename})`, geometry);
+                    
                     // Center the geometry
                     geometry.center();
 
@@ -225,7 +266,7 @@
                     const maxDimension = Math.max(size.x, size.y, size.z);
                     const scale = 50 / maxDimension;
 
-                    // Create material with a modern look
+                    // Create material
                     const material = new THREE.MeshPhongMaterial({
                         color: 0xffffff,
                         specular: 0x111111,
@@ -249,43 +290,23 @@
                     animate();
                 },
                 function (xhr) {
-                    // Progress callback
                     const percentComplete = (xhr.loaded / xhr.total) * 100;
                     if (!isNaN(percentComplete)) {
-                        const progressBar = document.getElementById('progress-bar');
-                        if (progressBar) {
-                            progressBar.style.width = percentComplete + '%';
-                        }
+                        loading.innerHTML = `Loading ${filename}... ${Math.round(percentComplete)}%`;
                         console.log(`Loading progress: ${Math.round(percentComplete)}%`);
                     }
                 },
-                    function (error) {
-                        // Error callback
-                        console.error(`Error loading ${currentFile}:`, error);
-                        
-                        // Try next file
-                        currentFileIndex++;
-                        if (currentFileIndex < stlFiles.length) {
-                            console.log('Trying next file...');
-                            tryLoadSTL();
-                        } else {
-                            // All files failed
-                            console.error('All STL files failed to load');
-                            loading.innerHTML = `
-                                <div class="error">
-                                    <h2>Unable to load 3D model</h2>
-                                    <p>Error: ${error.message || 'Unknown error'}</p>
-                                    <p>Check browser console for details.</p>
-                                    <p>STL files may not be accessible due to Git LFS issues.</p>
-                                </div>
-                            `;
-                        }
-                    }
-                );
-            }
-            
-            // Start loading
-            tryLoadSTL();
+                function (error) {
+                    console.error(`Error loading ${filename}:`, error);
+                    loading.innerHTML = `
+                        <div class="error">
+                            <h2>Unable to load 3D model</h2>
+                            <p>Error: ${error.message || 'Unknown error'}</p>
+                            <p>Check browser console for details.</p>
+                        </div>
+                    `;
+                }
+            );
         }
 
         function onWindowResize() {
