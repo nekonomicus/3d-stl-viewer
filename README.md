@@ -58,12 +58,12 @@ A clean, minimalistic web application for viewing 3D STL files with 360-degree r
    - Go to https://dashboard.render.com
    - Click "New +" → "Static Site"
    - Connect your GitHub account if not already connected
-   - Select your repository
+   - Select your repository: `nekonomicus/3d-stl-viewer`
    - Use these settings:
      - **Name**: `3d-stl-viewer` (or your preferred name)
      - **Branch**: `main`
-     - **Build Command**: (leave empty)
-     - **Publish Directory**: `.`
+     - **Build Command**: *(leave completely empty - no build needed)*
+     - **Publish Directory**: `.` *(just a single dot)*
    - Click "Create Static Site"
 
 5. **Access your site**:
