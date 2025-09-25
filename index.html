@@ -176,9 +176,21 @@
         function loadSTL() {
             const loader = new THREE.STLLoader();
             
-            loader.load(
-                'Example.stl',
-                function (geometry) {
+            // Add debugging
+            console.log('Starting to load STL file...');
+            
+            // Try test cube first, then fall back to main STL
+            const stlFiles = ['test-cube.stl', 'Example.stl'];
+            let currentFileIndex = 0;
+            
+            function tryLoadSTL() {
+                const currentFile = stlFiles[currentFileIndex];
+                console.log(`Trying to load: ${currentFile}`);
+                
+                loader.load(
+                    currentFile,
+                    function (geometry) {
+                        console.log(`STL file loaded successfully! (${currentFile})`, geometry);
                     // Center the geometry
                     geometry.center();
 
@@ -218,17 +230,33 @@
                         loading.textContent = `Loading 3D Model... ${Math.round(percentComplete)}%`;
                     }
                 },
-                function (error) {
-                    // Error callback
-                    console.error('Error loading STL:', error);
-                    loading.innerHTML = `
-                        <div class="error">
-                            <h2>Unable to load 3D model</h2>
-                            <p>Please ensure Example.stl is in the same directory as this HTML file.</p>
-                        </div>
-                    `;
-                }
-            );
+                    function (error) {
+                        // Error callback
+                        console.error(`Error loading ${currentFile}:`, error);
+                        
+                        // Try next file
+                        currentFileIndex++;
+                        if (currentFileIndex < stlFiles.length) {
+                            console.log('Trying next file...');
+                            tryLoadSTL();
+                        } else {
+                            // All files failed
+                            console.error('All STL files failed to load');
+                            loading.innerHTML = `
+                                <div class="error">
+                                    <h2>Unable to load 3D model</h2>
+                                    <p>Error: ${error.message || 'Unknown error'}</p>
+                                    <p>Check browser console for details.</p>
+                                    <p>STL files may not be accessible due to Git LFS issues.</p>
+                                </div>
+                            `;
+                        }
+                    }
+                );
+            }
+            
+            // Start loading
+            tryLoadSTL();
         }
 
         function onWindowResize() {
