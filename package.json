@@ -1,0 +1,21 @@
+{
+  "name": "3d-stl-viewer",
+  "version": "1.0.0",
+  "description": "Minimalistic 3D STL model viewer",
+  "main": "index.html",
+  "scripts": {
+    "start": "python3 -m http.server 8000",
+    "serve": "npx serve -s . -p 8000"
+  },
+  "keywords": [
+    "3d",
+    "stl",
+    "viewer",
+    "threejs"
+  ],
+  "author": "nekonomicus",
+  "license": "MIT",
+  "devDependencies": {
+    "serve": "^14.2.0"
+  }
+}
